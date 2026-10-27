@@ -2,7 +2,7 @@
 
 SEKCO is a project and task management web application with role-based access, a drag-and-drop Kanban board, a live analytics dashboard and a full REST API. It is built with **Node.js, Express and MySQL** on the back end and a framework-free **ES-module** front end.
 
-**[Open the live demo](https://vaas125.github.io/sekco-business-automation/)** - runs entirely in your browser (data is stored in `localStorage`; use the one-click demo accounts on the login screen).
+**[Open the live demo](https://arifaydin12.github.io/sekco-business-automation/)** - runs entirely in your browser (data is stored in `localStorage`; use the one-click demo accounts on the login screen).
 
 ![Dashboard](screenshots/screenshot.png)
 

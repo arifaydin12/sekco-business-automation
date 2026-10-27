@@ -26,7 +26,7 @@
     "nodejs",
     "express"
   ],
-  "author": "Arif Enes",
+  "author": "Arif Enes Aydin",
   "license": "MIT",
   "dependencies": {
     "bcryptjs": "^3.0.3",
