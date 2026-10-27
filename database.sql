@@ -1,19 +1,21 @@
--- Veritabanını oluştur
-CREATE DATABASE IF NOT EXISTS sekco_db;
+-- SEKCO Business Automation - database schema (MySQL 8+)
+CREATE DATABASE IF NOT EXISTS sekco_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 USE sekco_db;
 
--- Kullanıcılar tablosu
+-- Users
 CREATE TABLE IF NOT EXISTS users (
     id INT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(100) NOT NULL,
     email VARCHAR(100) UNIQUE NOT NULL,
     password_hash VARCHAR(255) NOT NULL,
     role ENUM('Admin', 'User', 'Manager') DEFAULT 'User',
-    status ENUM('Active', 'Inactive') DEFAULT 'Active',
+    status ENUM('Active', 'Inactive', 'PendingVerification') DEFAULT 'Active',
+    verification_code VARCHAR(10) NULL,
+    code_expires_at DATETIME NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Projeler tablosu
+-- Projects
 CREATE TABLE IF NOT EXISTS projects (
     id INT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(100) NOT NULL,
@@ -27,7 +29,7 @@ CREATE TABLE IF NOT EXISTS projects (
     FOREIGN KEY (manager_id) REFERENCES users(id) ON DELETE SET NULL
 );
 
--- Görevler tablosu
+-- Tasks
 CREATE TABLE IF NOT EXISTS tasks (
     id INT AUTO_INCREMENT PRIMARY KEY,
     title VARCHAR(100) NOT NULL,
@@ -45,15 +47,5 @@ CREATE TABLE IF NOT EXISTS tasks (
     FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
 );
 
--- Raporlar tablosu
-CREATE TABLE IF NOT EXISTS users (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(100) NOT NULL,
-    email VARCHAR(100) UNIQUE NOT NULL,
-    password_hash VARCHAR(255) NOT NULL,
-    role ENUM('Admin', 'User', 'Manager') DEFAULT 'User',
-    status ENUM('Active', 'Inactive', 'PendingVerification') DEFAULT 'PendingVerification',
-    verification_code VARCHAR(10) NULL,
-    code_expires_at DATETIME NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+-- Create the first admin with the helper script instead of storing a password here:
+--   node scripts/create-admin.js "Admin Name" admin@example.com "a-strong-password"

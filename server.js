@@ -1,31 +1,45 @@
+require('dotenv').config();
+
+const path = require('path');
 const express = require('express');
 const mysql = require('mysql2');
 const cors = require('cors');
 const bcrypt = require('bcrypt');
-const jwt = require('jsonwebtoken'); // Yeni eklendi
+const jwt = require('jsonwebtoken');
+
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+    console.error('JWT_SECRET is not set. Copy .env.example to .env and fill it in.');
+    process.exit(1);
+}
 
 const app = express();
-const port = 3000;
-const JWT_SECRET = 'your_super_secret_key_12345'; // Gerçek projede .env dosyasında saklanmalı
+const port = process.env.PORT || 3000;
 
 app.use(express.json());
 app.use(cors());
 
-// ÖNEMLİ: Frontend dosyalarını sunmak için
-// Projenizin ana klasöründe dosyalarınız olduğunu varsayıyorum.
-// Eğer bir `public` veya `src` klasöründeyse, ona göre güncelleyin.
-app.use(express.static('.'));
+// Serve only the front-end folder (never the project root, which holds server code and .env)
+app.use(express.static(path.join(__dirname, 'src')));
 
 const db = mysql.createConnection({
-    host: 'localhost', user: 'root', password: '', database: 'sekco_db', charset: 'utf8mb4'
+    host: process.env.DB_HOST || 'localhost',
+    user: process.env.DB_USER || 'root',
+    password: process.env.DB_PASSWORD || '',
+    database: process.env.DB_NAME || 'sekco_db',
+    charset: 'utf8mb4'
 });
 
 db.connect(err => {
-    if (err) { console.error('DB connect error:', err); return; }
+    if (err) {
+        console.error('DB connect error:', err);
+        return;
+    }
     console.log('MySQL connected!');
 });
 
-// Middleware: API isteklerini doğrulamak için
+// ============ MIDDLEWARE ============
+
 const authenticateToken = (req, res, next) => {
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1];
@@ -39,7 +53,12 @@ const authenticateToken = (req, res, next) => {
     });
 };
 
-// ============ AUTH API ENDPOINTS (Public) ============
+const requireAdmin = (req, res, next) => {
+    if (req.user.role !== 'Admin') return res.sendStatus(403);
+    next();
+};
+
+// ============ AUTH API (public) ============
 
 app.post('/api/auth/login', (req, res) => {
     const { email, password } = req.body;
@@ -61,16 +80,15 @@ app.post('/api/auth/login', (req, res) => {
     });
 });
 
-// ============ PROTECTED API ENDPOINTS (Giriş Gerektiren) ============
+// ============ PROTECTED API ============
 
-// Giriş yapmış kullanıcının bilgilerini getiren API
+// Current user
 app.get('/api/me', authenticateToken, (req, res) => {
     res.json(req.user);
 });
 
-// Tüm kullanıcıları getiren API
+// List users
 app.get('/api/users', authenticateToken, (req, res) => {
-    // İleride yetkilendirme eklenebilir: if(req.user.role !== 'Admin') return res.sendStatus(403);
     const sql = 'SELECT id, name, email, role, status FROM users ORDER BY created_at DESC';
     db.query(sql, (err, results) => {
         if (err) return res.status(500).json({ error: 'Failed to fetch users' });
@@ -78,23 +96,19 @@ app.get('/api/users', authenticateToken, (req, res) => {
     });
 });
 
-// Yeni kullanıcı ekleyen API (Sadece Adminler için olmalı - yetkilendirme sonraki adım)
-app.post('/api/users', authenticateToken, async (req, res) => {
+// Create user (admins only)
+app.post('/api/users', authenticateToken, requireAdmin, async (req, res) => {
     const { name, email, role, password } = req.body;
     if (!name || !email || !password) {
         return res.status(400).json({ error: 'All fields are required' });
     }
     const hashedPassword = await bcrypt.hash(password, 10);
     const sql = 'INSERT INTO users (name, email, role, status, password_hash) VALUES (?, ?, ?, ?, ?)';
-    db.query(sql, [name, email, role || 'User', 'Active', hashedPassword], (err, result) => {
+    db.query(sql, [name, email, role || 'User', 'Active', hashedPassword], (err) => {
         if (err) return res.status(500).json({ error: 'Failed to add user' });
         res.status(201).json({ message: 'User added successfully!' });
     });
 });
-
-// Diğer API'larınız... (PUT, DELETE etc. authenticateToken eklenmeli)
-// app.put('/api/users/:id', authenticateToken, ...);
-// app.delete('/api/users/:id', authenticateToken, ...);
 
 app.listen(port, () => {
     console.log(`Server running on http://localhost:${port}`);
